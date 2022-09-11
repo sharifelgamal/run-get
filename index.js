@@ -83,7 +83,7 @@ client.once('ready', () => {
 	// Set Discord status
 	client.user.setPresence({
 		activity: {
-			name: '?rungethelp',
+			name: 'Get Your Sparkle On',
 			type: 'LISTENING'
 		},
 		status: 'dnd'
@@ -132,10 +132,7 @@ client.once('ready', () => {
 
 // Messages to add game watch to a server
 client.on('message', async message => {
-	// Help reply
-	if ((message.content === '?rungethelp' || message.mentions.users.has(client.user.id)) && message.content.includes('help')) message.reply('Need help with RUN GET? https://slashinfty.github.io/run-get');
-	
-	if ((message.content === '?rungetgames' || message.content === '?rungetgames!' || message.mentions.users.has(client.user.id)) && message.content.includes('games')) {
+	if (message.content === '?games' && message.member.hasPermission("ADMINISTRATOR")) {
 		const lengthCheck = (existing, next, msg) => {
 			const content = existing + next;
 			if (content.length >= 2000) {
@@ -145,126 +142,19 @@ client.on('message', async message => {
 				return existing;
 			}
 		}
-		if (message.channel.type === 'dm') {
-			const gamesArray = users.filter(u => u.channel === message.author.id);
-			if (gamesArray.length === 0) {
-				message.reply('Not currently watching any games.');
-				return;
-			}
-			let replyString = 'Currently watching:';
-			gamesArray.forEach(g => {
-				replyString = lengthCheck(replyString, g.gameName, message);
-				replyString += '\n' + g.gameName;
-			});
-			message.reply(replyString);
-			return;
-		} else {
-			const gamesArray = servers.filter(s => s.server === message.guild.id);
-			const runnersArray = runners.filter(r => r.server === message.guild.id);
-			if (gamesArray.length === 0 && runnersArray.length === 0) {
-				message.reply('Not currently watching any games.');
-				return;
-			}
-			let replyString = 'Currently watching:';
-			gamesArray.forEach(s => {
-				const nextMsg = message.content.endsWith('!') ? '\n' + s.gameName + ' in ' + s.channelName : '\n' + s.gameName;
-				replyString = lengthCheck(replyString, nextMsg, message)
-				replyString += nextMsg;
-			});
-			runnersArray.forEach(s => {
-				const nextMsg = message.content.endsWith('!') ? '\n' + s.runnerName + ' in ' + s.channelName : '\n' + s.runnerName;
-				replyString = lengthCheck(replyString, nextMsg, message)
-				replyString += nextMsg;
-			});
-			message.reply(replyString);
-		}
-	}
-	
-	// Message must mention the bot and the user
-	if (message.channel.type === 'dm' && message.author.id != client.user.id) {
-		const submittedGamesArray = message.content.match(/\!?\b(?<!\<)[\w\-]+(?!\>)\b\*?/g);
-		if (submittedGamesArray === null) {
-			message.author.send('No game/user submitted.');
+		
+		const gamesArray = servers.filter(s => s.server === message.guild.id);
+		if (gamesArray.length === 0) {
+			message.reply('Not currently watching any games.');
 			return;
 		}
-		if (submittedGamesArray.length === 1 && submittedGamesArray[0].endsWith('*')) {
-			const submittedName = submittedGamesArray[0].slice(0, -1);
-			let userName, userID;
-			const twitchResult = await query.twitchUser(submittedName);
-			if (twitchResult !== undefined) {
-				userName = twitchResult.name;
-				userId = twitchResult.id
-			} else {
-				const srcResult = await query.srcUser(submittedName);
-				if (typeof srcResult === 'string') {
-					message.author.send(srcResult);
-					return;
-				}
-				userName = srcResult.name;
-				userId = srcResult.id;
-			}
-			message.author.send('Found user named ' + userName);
-			const moderateArray = await query.moderatedGames(userId);
-			for (let i = 0; i < moderateArray.length; i++) {
-				const existing = users.find(u => u.channel === message.author.id && u.game === moderateArray[i].id);
-				if (existing !== undefined) {
-					message.author.send('I am already watching for ' + moderateArray[i].names.international + ' for you');
-					continue;
-				}
-				const newUser = {
-					"game": moderateArray[i].id,
-					"gameName": moderateArray[i].names.international,
-					"channel": message.author.id
-				}
-				users.push(newUser);
-				message.author.send('Now watching ' + moderateArray[i].names.international);
-				userUpdate();
-			}
-			return;
-		}
-		if (submittedGamesArray.length === 0) {
-			message.reply('No games specified in message.');
-			return;
-		}
-		for (let i = 0; i < submittedGamesArray.length; i++) {
-			// Get game ID from abbreviation
-			const abbr = submittedGamesArray[i].startsWith('!') ? submittedGamesArray[i].slice(1) : submittedGamesArray[i];
-			const gameResult = await query.game(abbr);
-			// If no game is found
-			if (gameResult === undefined) {
-				message.reply('No game found. Are you sure https://www.speedrun.com/' + submittedGamesArray[i] + ' exists?');
-				continue;
-			}
-			const gameID = gameResult.id;
-			const gameName = gameResult.names.international;
-			// Grabbing user information if already watching for the game
-			const foundUser = users.find(u => u.channel === message.author.id && u.game === gameID);
-			// Check if removing
-			if (submittedGamesArray[i].startsWith('!')) {
-				if (foundUser === undefined) {
-					message.author.send('I am not currently watching games for you');
-					continue;
-				}
-				users.splice(users.indexOf(foundUser), 1);
-				message.author.send('No longer watching ' + gameName);
-				userUpdate();
-			} else {
-				if (foundUser !== undefined) {
-					message.author.send('I am already watching for ' + gameName + ' for you');
-					continue;
-				}
-				// User information
-				const newUser = {
-					"game": gameID,
-					"gameName": gameName,
-					"channel": message.author.id
-				}
-				users.push(newUser);
-				message.author.send('Now watching ' + gameName);
-				userUpdate();
-			}
-		}
-		return;
+		let replyString = 'Currently watching:';
+		gamesArray.forEach(s => {
+			const nextMsg = message.content.endsWith('!') ? '\n' + s.gameName + ' in ' + s.channelName : '\n' + s.gameName;
+			replyString = lengthCheck(replyString, nextMsg, message)
+			replyString += nextMsg;
+		});
+		message.reply(replyString);
 	}
 	
 	// Message must mention the bot, be from a server administrator, and mention exactly 1 channel
@@ -377,20 +267,18 @@ client.on('message', async message => {
 				}
 			}
 		}
+		return
 	}
-
-	if (message.mentions.users.has(client.user.id) && message.member.hasPermission("ADMINISTRATOR") && message.mentions.channels.size === 0) {	
-		const newNickArray = message.content.match(/\!?\b(?<!\<)([^\<\>]\s?)+(?!\>)\b\*?/g);	
-		if (newNickArray === null) {	
-			message.reply('Missing parameters.');	
-			return;	
-		}	
-		const nickCheck = newNickArray.find(e => e.includes('!nick'));	
-		if (nickCheck === undefined) return;	
-		const self = message.guild.me;	
-		const newNick = nickCheck.replace('!nick','').trim();	
-		self.setNickname(newNick);	
-		message.reply('Nickname updated!');	
+	if ((message.mentions.users.has(client.user.id) || message.content.includes('SmugBabs')) && message.author.id !== client.user.id && message.channel.type !== 'dm') {
+		console.log("babs")
+		message.channel.send("<:SmugBabs:816011832060936192>")
+	}
+	if (message.content == "<:mermaidbarbie:981049526611771452>" && message.author.id !== client.user.id && message.channel.type !== 'dm') {
+		r = Math.floor((Math.random() * 10) + 1) 
+		if (r == 10) {
+			console.log("bruh")
+			message.channel.send("bruh")
+		}
 	}
 });
 
@@ -462,7 +350,7 @@ client.setInterval(async () => {
 		    const runRank = foundRun === undefined ? 'N/A' : foundRun.place;
 		    // Create Discord embed
 		    const embed = new Discord.MessageEmbed()
-			    .setColor('#2A89E7')
+			    .setColor('#E0218A')
 			    .setTitle(convert(thisRun.times.primary_t) + ' by ' + runnerName)
 			    .setThumbnail(thisRun.game.data.assets['cover-medium'].uri)
 			    .setURL(thisRun.weblink)
